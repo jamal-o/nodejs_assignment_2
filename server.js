@@ -75,6 +75,7 @@ function validateRequestBody(requestBody) {
       );
 
       forms = JSON.parse(rawFile).forms;
+      
     }
 
     forms.push(requestBody);
@@ -141,7 +142,7 @@ function getHandler(req, res) {
 
   //handle user submitting with get
   let requestBody = url.parse(req.url, true).query;
-  if (req.url.match("/html_form") && requestBody !== undefined) {
+  if (req.url.match("/\/html_form?/") && requestBody !== undefined) {
     res.writeHead(200, { "Content-type": "application/json" });
     res.write(responseToJson(validateRequestBody(requestBody)));
     res.end();
@@ -157,6 +158,7 @@ function getHandler(req, res) {
 //handle user submit with post
 function postHandler(req, res) {
   if (req.url === "/html_form") {
+    res.writeHead(200, { "Content-type": "application/json" });
     let data = "";
     req.on("data", (chunk) => {
       data = data.concat(chunk);
@@ -183,7 +185,7 @@ function requestHandler(req, res) {
       break;
 
     case "POST":
-      res.writeHead(200, { "Content-type": "application/json" });
+      
       postHandler(req, res);
       break;
 
@@ -205,7 +207,7 @@ function requestHandler(req, res) {
 }
 
 const server = createServer(requestHandler);
-server.listen(3000, () => {
+server.listen(5000, () => {
   console.log("Server up and running!");
 });
 
@@ -228,7 +230,7 @@ const htmlForm = `
     </style> -->
 </head>
 <body>
-    <form method="POST">
+    <form>
         <fieldset>
             <legend>Information Form</legend>
 
