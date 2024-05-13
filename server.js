@@ -28,7 +28,7 @@ function responseToJson(response) {
 
 function validateRequestBody(requestBody) {
   const { fname, lname, oname, email, phoneNo, gender } = requestBody;
-  console.log(requestBody);
+
   const testMatch = Patterns.testMatch;
 
   let validInput = {
@@ -39,8 +39,6 @@ function validateRequestBody(requestBody) {
     phoneNoValid: testMatch(Patterns.phonenumberPattern, phoneNo),
     genderValid: testMatch(Patterns.genderPattern, gender),
   };
-
-  console.log(validInput);
 
   let inputValuesArray = Object.values(validInput);
 
@@ -55,10 +53,37 @@ function validateRequestBody(requestBody) {
       break;
     }
   }
-  console.log("all inputs valid: " + allInputsValid);
+
   //write content to database.json if good response
   if (allInputsValid) {
-    fs.appendFile("database.json", JSON.stringify(requestBody), (err) => {
+    let forms = [];
+
+    if (fs.existsSync("database.json")) {
+      console.log("file exists");
+      let rawFile = fs.readFileSync(
+        "database.json",
+        { encoding: "utf-8" },
+        (err, data) => {
+          if (err.code === "ENOENT") {
+            return;
+          }
+          if (err) {
+            console.error(err.toString());
+            return;
+          }
+        }
+      );
+
+      forms = JSON.parse(rawFile).forms;
+    }
+
+    forms.push(requestBody);
+
+    formsObj = {
+      forms: forms,
+    };
+
+    fs.writeFile("database.json", JSON.stringify(formsObj), (err) => {
       if (err) throw err;
       console.log("Data written to file");
     });
@@ -70,6 +95,7 @@ function validateRequestBody(requestBody) {
         }
         `;
   } else {
+    //provide error message
     let errors = "";
 
     if (!validInput.fnameValid) {
@@ -106,20 +132,21 @@ function validateRequestBody(requestBody) {
 }
 
 function getHandler(req, res) {
+  //handle user getting form
   if (req.url === "/" || req.url === "/html_form") {
     res.writeHead(200, { "Content-type": "text/html" });
     res.write(htmlForm);
     res.end();
-    
-    
-  } else if(req.url.toString().match("/html_form")){
-    let requestBody = url.parse(req.url, true).query;
-    res.write(responseToJson(validateRequestBody(requestBody)));
-    // console.log(result.end);
-    res.end();
-
   }
-  else {
+
+  //handle user submitting with get
+  let requestBody = url.parse(req.url, true).query;
+  if (req.url.match("/html_form") && requestBody !== undefined) {
+    res.writeHead(200, { "Content-type": "application/json" });
+    res.write(responseToJson(validateRequestBody(requestBody)));
+    res.end();
+  } else {
+    //handle user wrong url
     res.writeHead(404, { "Content-type": "text/html" });
     res.end(`
     <h1>404 Not Found</h1>
@@ -127,33 +154,41 @@ function getHandler(req, res) {
   }
 }
 
+//handle user submit with post
 function postHandler(req, res) {
-  let data = "";
-  req.on("data", (chunk) => {
-    data = data.concat(chunk);
-  });
+  if (req.url === "/html_form") {
+    let data = "";
+    req.on("data", (chunk) => {
+      data = data.concat(chunk);
+    });
 
-  req.on("end", () => {
-    let requestBody = JSON.parse(data);
-    let responseBody = validateRequestBody(requestBody);
-
-    res.end(responseToJson(validateRequestBody(req.body)));
-    res.end(responseBody);
-  });
+    req.on("end", () => {
+      let requestBody = JSON.parse(data);
+      let responseBody = validateRequestBody(requestBody);
+      res.end(responseToJson(responseBody));
+    });
+  } else {
+    res.writeHead(404, { "Content-type": "text/html" });
+    res.end(`
+    <h1>404 Not Found</h1>
+    `);
+  }
 }
 
 function requestHandler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
   switch (req.method) {
-    case "GET":      
+    case "GET":
       getHandler(req, res);
       break;
 
     case "POST":
       res.writeHead(200, { "Content-type": "application/json" });
       postHandler(req, res);
+      break;
 
     default:
-      res.writeHead(404, { "Content-type": "application/json" });
+      res.writeHead(400, { "Content-type": "application/json" });
       res.end(
         JSON.stringify(
           `
@@ -167,7 +202,6 @@ function requestHandler(req, res) {
       );
       break;
   }
-  
 }
 
 const server = createServer(requestHandler);
@@ -194,7 +228,7 @@ const htmlForm = `
     </style> -->
 </head>
 <body>
-    <form>
+    <form method="POST">
         <fieldset>
             <legend>Information Form</legend>
 
@@ -237,4 +271,4 @@ const htmlForm = `
     </form>
 </body>
 </html>
-`
+`;
