@@ -59,8 +59,9 @@ function validateRequestBody(requestBody) {
   if (allInputsValid) {
     let forms = [];
 
+    //handle file already exists
     if (fs.existsSync("database.json")) {
-      console.log("file exists");
+      console.log("file already exists");
       let rawFile = fs.readFileSync(
         "database.json",
         { encoding: "utf-8" },
@@ -231,8 +232,9 @@ function requestHandler(req, res) {
 }
 
 const server = createServer(requestHandler);
-const port = 3000;
+const port = 5000;
 server.listen(port, () => {
   console.log(`Server up and running on port ${port}!`);
 });
 
+module.exports = server;

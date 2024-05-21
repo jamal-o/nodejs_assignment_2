@@ -6,7 +6,9 @@
   "scripts": {
     "start": "nodemon server.js",
     "test": "jest"
+    
   },
+  
   "name": "node_assignment_2",
   "version": "1.0.0",
   "main": "server.js",
