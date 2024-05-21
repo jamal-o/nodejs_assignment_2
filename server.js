@@ -1,6 +1,7 @@
 const { createServer } = require("http");
 const fs = require("fs");
 const url = require("url");
+const qs = require("querystring");
 
 class Patterns {
   static testMatch(pattern, string) {
@@ -75,7 +76,6 @@ function validateRequestBody(requestBody) {
       );
 
       forms = JSON.parse(rawFile).forms;
-      
     }
 
     forms.push(requestBody);
@@ -136,13 +136,27 @@ function getHandler(req, res) {
   //handle user getting form
   if (req.url === "/" || req.url === "/html_form") {
     res.writeHead(200, { "Content-type": "text/html" });
-    res.write(htmlForm);
+    let html_form = fs.readFileSync(
+      "html_form.html",
+      { encoding: "utf-8" },
+      (err, data) => {
+        if (err.code === "ENOENT") {
+          return;
+        }
+        if (err) {
+          console.error(err.toString());
+          return;
+        }
+      }
+    );
+    res.write(html_form);
     res.end();
+    return;
   }
 
   //handle user submitting with get
   let requestBody = url.parse(req.url, true).query;
-  if (req.url.match("/\/html_form?/") && requestBody !== undefined) {
+  if (req.url.match("//html_form?/") && requestBody !== undefined) {
     res.writeHead(200, { "Content-type": "application/json" });
     res.write(responseToJson(validateRequestBody(requestBody)));
     res.end();
@@ -157,15 +171,26 @@ function getHandler(req, res) {
 
 //handle user submit with post
 function postHandler(req, res) {
-  if (req.url === "/html_form") {
+  if (req.url.match("/") || req.url === "/html_form") {
     res.writeHead(200, { "Content-type": "application/json" });
     let data = "";
     req.on("data", (chunk) => {
+      
       data = data.concat(chunk);
     });
 
     req.on("end", () => {
-      let requestBody = JSON.parse(data);
+      // console.log(`Data: \n\n ${data}`)
+      let requestBody;
+      
+      try {
+       requestBody = JSON.parse(data);  
+      } catch (error) {
+        requestBody = qs.parse(data);
+      }
+      // if (requestBody == '') requestBody = JSON.parse(data);
+      console.log(`Data: \n\n ${data.toString()}`);
+
       let responseBody = validateRequestBody(requestBody);
       res.end(responseToJson(responseBody));
     });
@@ -185,7 +210,6 @@ function requestHandler(req, res) {
       break;
 
     case "POST":
-      
       postHandler(req, res);
       break;
 
@@ -207,70 +231,8 @@ function requestHandler(req, res) {
 }
 
 const server = createServer(requestHandler);
-server.listen(5000, () => {
-  console.log("Server up and running!");
+const port = 3000;
+server.listen(port, () => {
+  console.log(`Server up and running on port ${port}!`);
 });
 
-const htmlForm = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML FORM</title>
-    <!-- <style>
-        body{
-            text-align: center;
-            align-items: center;
-        }
-
-        label{
-            width
-        }
-    </style> -->
-</head>
-<body>
-    <form>
-        <fieldset>
-            <legend>Information Form</legend>
-
-        <!-- first name -->
-        <label for="fname">First Name</label><br>
-        <input type="text" name="fname" id="fname"><br>
-
-        <!-- last name -->
-        <label for="lname">Last Name</label><br>
-        <input type="text" name="lname" id="lname"><br>
-
-        
-        <!-- other names -->
-        <label for="oname">Other Names</label><br>
-        <input type="text" name="oname" id="oname"><br>
-
-        
-        <!-- email address -->
-        <label for="email">Email</label><br>
-        <input type="email" name="email" id="email"><br>
-
-        
-        <!-- phone number -->
-        <label for="phoneNo">Phone Number</label><br>
-        <input type="tel" name="phoneNo" id="phoneNo"><br>
-
-        
-        <!-- gender -->
-        <label for="gender">Gender</label><br>
-        <select id="gender" name="gender"><br>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-        </select><br>
-        
-        
-        <!-- submit  -->
-        <input type="submit"></input><br>
-
-        </fieldset>
-    </form>
-</body>
-</html>
-`;
