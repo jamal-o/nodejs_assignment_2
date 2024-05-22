@@ -88,11 +88,13 @@ function validateRequestBody(requestBody) {
     fs.writeFile("database.json", JSON.stringify(formsObj), (err) => {
       if (err) throw err;
       console.log("Data written to file");
+      // console.log
     });
 
     return `
         {
-            "message": "Form filled successfully"
+            "message": "Form filled successfully",
+            "forms": ${JSON.stringify(forms)}
             
         }
         `;
